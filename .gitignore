@@ -5,3 +5,6 @@ dist/
 
 # scratch output from local tool runs
 tmp/
+
+# sprite workspace (when ASEPRITE_MCP_DIR points inside the repo)
+sprites/
