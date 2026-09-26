@@ -19,6 +19,7 @@ export interface SpriteInfo {
   height: number;
   colorMode: string;
   frames: number;
+  frameDurations: number[];
   layers: LayerInfo[];
 }
 
@@ -43,12 +44,15 @@ export async function readSpriteInfo(name: string): Promise<SpriteInfo> {
         isGuide = mcp.isGuideLayer(layer),
       }
     end
+    local durations = {}
+    for i = 1, #s.frames do durations[#durations + 1] = math.floor(s.frames[i].duration * 1000 + 0.5) end
     return {
       path = MCP_ARGS.path,
       width = s.width,
       height = s.height,
       colorMode = mode,
       frames = #s.frames,
+      frameDurations = durations,
       layers = layers,
     }
     `,

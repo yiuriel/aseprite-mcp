@@ -41,9 +41,7 @@ function buildBody(): string {
   return `
     local s = app.open(MCP_ARGS.path)
     if not s then error("Could not open sprite: " .. MCP_ARGS.path) end
-    local cel = s.cels[1]
-    if not cel then error("Sprite has no drawable cel") end
-    local img = cel.image
+    local layer, img = mcp.target(s, MCP_ARGS.layer, MCP_ARGS.frame)
     local w, h = s.width, s.height
 
     local outOfBounds = {}
@@ -65,10 +63,19 @@ function buildBody(): string {
   `;
 }
 
-export async function applyPixels(name: string, pixels: Pixel[]): Promise<SetPixelsSummary> {
+export async function applyPixels(
+  name: string,
+  pixels: Pixel[],
+  options: { layer?: string; frame?: number } = {},
+): Promise<SetPixelsSummary> {
   const outPath = await requireSpritePath(name);
 
-  const run = await runLua(buildBody(), { path: outPath, pixels });
+  const run = await runLua(buildBody(), {
+    path: outPath,
+    pixels,
+    layer: options.layer ?? "",
+    frame: options.frame ?? 1,
+  });
   if (!run.ok) {
     throw new Error(run.error ?? "unknown error");
   }
@@ -96,11 +103,16 @@ export function registerSetPixels(server: McpServer): void {
           )
           .min(1)
           .describe("Pixels to write. Later entries win if coordinates repeat."),
+        layer: z.string().optional().describe("Target layer. Defaults to the first non-guide layer."),
+        frame: z.number().int().min(1).optional().describe("Target frame (1-based). Defaults to 1."),
       },
     },
-    async ({ name, pixels }) => {
+    async ({ name, pixels, layer, frame }) => {
       try {
-        const summary = await applyPixels(name, normalizePixels(pixels as PixelInput[]));
+        const summary = await applyPixels(name, normalizePixels(pixels as PixelInput[]), {
+          layer,
+          frame,
+        });
         return {
           content: [
             {

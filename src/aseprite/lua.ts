@@ -54,9 +54,9 @@ function mcp.celImage(sprite, layer, frame)
   return cel.image
 end
 
-function mcp.target(sprite, layerName)
+function mcp.target(sprite, layerName, frame)
   local layer = mcp.targetLayer(sprite, layerName)
-  return layer, mcp.celImage(sprite, layer, 1)
+  return layer, mcp.celImage(sprite, layer, frame or 1)
 end
 
 function mcp.drawLine(img, x0, y0, x1, y1, color)

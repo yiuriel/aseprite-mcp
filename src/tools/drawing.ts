@@ -6,6 +6,7 @@ export async function drawOnSprite(
   layer: string | undefined,
   inner: string,
   args: Record<string, unknown>,
+  frame?: number,
 ): Promise<Record<string, unknown>> {
   const spritePath = await requireSpritePath(name);
 
@@ -13,7 +14,7 @@ export async function drawOnSprite(
     `
     local s = app.open(MCP_ARGS.path)
     if not s then error("Could not open sprite: " .. MCP_ARGS.path) end
-    local layer, img = mcp.target(s, MCP_ARGS.layer)
+    local layer, img = mcp.target(s, MCP_ARGS.layer, MCP_ARGS.frame)
     local w, h = s.width, s.height
     local extra = (function()
     ${inner}
@@ -24,7 +25,7 @@ export async function drawOnSprite(
     if not s:saveAs(MCP_ARGS.path) then error("Failed to save sprite") end
     return extra
     `,
-    { path: spritePath, layer: layer ?? "", ...args },
+    { path: spritePath, layer: layer ?? "", frame: frame ?? 1, ...args },
   );
 
   if (!run.ok) throw new Error(run.error ?? "unknown error");

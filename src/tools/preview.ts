@@ -10,6 +10,7 @@ import { readSpriteInfo } from "./sprite-info.ts";
 export interface PreviewOptions {
   scale?: number;
   showGuides?: boolean;
+  frame?: number;
 }
 
 export interface PreviewResult extends RenderResult {
@@ -29,7 +30,11 @@ export async function renderPreview(
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "aseprite-mcp-preview-"));
   const file = path.join(dir, "preview.png");
   try {
-    const rendered = await renderPng(name, file, { scale, hideGuides: !options.showGuides });
+    const rendered = await renderPng(name, file, {
+      scale,
+      hideGuides: !options.showGuides,
+      frame: options.frame,
+    });
     const png = await fs.readFile(file);
     return { ...rendered, pngBase64: png.toString("base64") };
   } finally {
@@ -54,16 +59,17 @@ export function registerPreview(server: McpServer): void {
           .optional()
           .describe("Integer upscale factor. Defaults to a size that fits about 192px."),
         showGuides: z.boolean().optional().describe("Include guide layers. Defaults to false."),
+        frame: z.number().int().min(1).optional().describe("Frame to show (1-based). Defaults to 1."),
       },
     },
-    async ({ name, scale, showGuides }) => {
+    async ({ name, scale, showGuides, frame }) => {
       try {
-        const preview = await renderPreview(name, { scale, showGuides });
+        const preview = await renderPreview(name, { scale, showGuides, frame });
         return {
           content: [
             {
               type: "text",
-              text: `Preview of ${name}.aseprite (${preview.width}x${preview.height}, shown at ${preview.outputWidth}x${preview.outputHeight}).`,
+              text: `Preview of ${name}.aseprite frame ${frame ?? 1} (${preview.width}x${preview.height}, shown at ${preview.outputWidth}x${preview.outputHeight}).`,
             },
             { type: "image", data: preview.pngBase64, mimeType: "image/png" },
           ],

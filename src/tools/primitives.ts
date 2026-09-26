@@ -10,9 +10,10 @@ const pointSchema = z.object({
   y: z.number().int(),
 });
 
-const layerParam = z.string().optional().describe("Target layer. Defaults to the first non-guide layer.");
 const nameParam = z.string().describe("Sprite name.");
 const colorParam = colorSchema;
+const layerParam = z.string().optional().describe("Target layer. Defaults to the first non-guide layer.");
+const frameParam = z.number().int().min(1).optional().describe("Target frame (1-based). Defaults to 1.");
 
 export function registerPrimitives(server: McpServer): void {
   server.registerTool(
@@ -28,15 +29,17 @@ export function registerPrimitives(server: McpServer): void {
         y1: z.number().int(),
         color: colorParam,
         layer: layerParam,
+        frame: frameParam,
       },
     },
-    async ({ name, x0, y0, x1, y1, color, layer }) => {
+    async ({ name, x0, y0, x1, y1, color, layer, frame }) => {
       try {
         await drawOnSprite(
           name,
           layer,
           `mcp.drawLine(img, MCP_ARGS.x0, MCP_ARGS.y0, MCP_ARGS.x1, MCP_ARGS.y1, mcp.color(MCP_ARGS.color))`,
           { x0, y0, x1, y1, color: parseColor(color) },
+          frame,
         );
         return text(`Drew line on ${name}.aseprite.`);
       } catch (err) {
@@ -58,15 +61,17 @@ export function registerPrimitives(server: McpServer): void {
         height: z.number().int().min(1),
         color: colorParam,
         layer: layerParam,
+        frame: frameParam,
       },
     },
-    async ({ name, x, y, width, height, color, layer }) => {
+    async ({ name, x, y, width, height, color, layer, frame }) => {
       try {
         await drawOnSprite(
           name,
           layer,
           `mcp.drawRect(img, MCP_ARGS.x, MCP_ARGS.y, MCP_ARGS.width, MCP_ARGS.height, mcp.color(MCP_ARGS.color))`,
           { x, y, width, height, color: parseColor(color) },
+          frame,
         );
         return text(`Drew rectangle on ${name}.aseprite.`);
       } catch (err) {
@@ -88,15 +93,17 @@ export function registerPrimitives(server: McpServer): void {
         height: z.number().int().min(1),
         color: colorParam,
         layer: layerParam,
+        frame: frameParam,
       },
     },
-    async ({ name, x, y, width, height, color, layer }) => {
+    async ({ name, x, y, width, height, color, layer, frame }) => {
       try {
         await drawOnSprite(
           name,
           layer,
           `mcp.fillRect(img, MCP_ARGS.x, MCP_ARGS.y, MCP_ARGS.width, MCP_ARGS.height, mcp.color(MCP_ARGS.color))`,
           { x, y, width, height, color: parseColor(color) },
+          frame,
         );
         return text(`Filled rectangle on ${name}.aseprite.`);
       } catch (err) {
@@ -115,14 +122,18 @@ export function registerPrimitives(server: McpServer): void {
         points: z.array(pointSchema).min(2),
         color: colorParam,
         layer: layerParam,
+        frame: frameParam,
       },
     },
-    async ({ name, points, color, layer }) => {
+    async ({ name, points, color, layer, frame }) => {
       try {
-        await drawOnSprite(name, layer, `mcp.drawPolyline(img, MCP_ARGS.points, mcp.color(MCP_ARGS.color))`, {
-          points,
-          color: parseColor(color),
-        });
+        await drawOnSprite(
+          name,
+          layer,
+          `mcp.drawPolyline(img, MCP_ARGS.points, mcp.color(MCP_ARGS.color))`,
+          { points, color: parseColor(color) },
+          frame,
+        );
         return text(`Drew polyline on ${name}.aseprite.`);
       } catch (err) {
         return errorText((err as Error).message);
@@ -140,9 +151,10 @@ export function registerPrimitives(server: McpServer): void {
         points: z.array(pointSchema).min(3),
         color: colorParam,
         layer: layerParam,
+        frame: frameParam,
       },
     },
-    async ({ name, points, color, layer }) => {
+    async ({ name, points, color, layer, frame }) => {
       try {
         await drawOnSprite(
           name,
@@ -150,6 +162,7 @@ export function registerPrimitives(server: McpServer): void {
           `mcp.drawPolyline(img, MCP_ARGS.points, mcp.color(MCP_ARGS.color))
            mcp.drawLine(img, MCP_ARGS.points[#MCP_ARGS.points].x, MCP_ARGS.points[#MCP_ARGS.points].y, MCP_ARGS.points[1].x, MCP_ARGS.points[1].y, mcp.color(MCP_ARGS.color))`,
           { points, color: parseColor(color) },
+          frame,
         );
         return text(`Drew polygon on ${name}.aseprite.`);
       } catch (err) {
@@ -168,14 +181,18 @@ export function registerPrimitives(server: McpServer): void {
         points: z.array(pointSchema).min(3),
         color: colorParam,
         layer: layerParam,
+        frame: frameParam,
       },
     },
-    async ({ name, points, color, layer }) => {
+    async ({ name, points, color, layer, frame }) => {
       try {
-        await drawOnSprite(name, layer, `mcp.fillPolygon(img, MCP_ARGS.points, mcp.color(MCP_ARGS.color))`, {
-          points,
-          color: parseColor(color),
-        });
+        await drawOnSprite(
+          name,
+          layer,
+          `mcp.fillPolygon(img, MCP_ARGS.points, mcp.color(MCP_ARGS.color))`,
+          { points, color: parseColor(color) },
+          frame,
+        );
         return text(`Filled polygon on ${name}.aseprite.`);
       } catch (err) {
         return errorText((err as Error).message);
@@ -194,15 +211,17 @@ export function registerPrimitives(server: McpServer): void {
         y: z.number().int(),
         color: colorParam,
         layer: layerParam,
+        frame: frameParam,
       },
     },
-    async ({ name, x, y, color, layer }) => {
+    async ({ name, x, y, color, layer, frame }) => {
       try {
         const result = await drawOnSprite(
           name,
           layer,
           `return { filled = mcp.floodFill(img, MCP_ARGS.x, MCP_ARGS.y, mcp.color(MCP_ARGS.color)) }`,
           { x, y, color: parseColor(color) },
+          frame,
         );
         return text(`Filled ${result.filled} pixel(s) on ${name}.aseprite.`);
       } catch (err) {

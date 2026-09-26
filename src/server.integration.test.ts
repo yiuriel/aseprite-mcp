@@ -67,6 +67,10 @@ test("isometric workflow end to end", options, async () => {
       "get_palette",
       "set_palette",
       "export_png",
+      "export_gif",
+      "add_frame",
+      "set_frame_duration",
+      "delete_frame",
     ]) {
       assert.ok(names.has(expected), `missing tool ${expected}`);
     }
@@ -153,6 +157,40 @@ test("isometric workflow end to end", options, async () => {
     assert.equal(exported.subarray(1, 4).toString("ascii"), "PNG");
 
     res = await call(client, "update_layer", { name: "iso", layer: "art", opacity: 200 });
+    assert.ok(!res.isError, textOf(res));
+
+    res = await call(client, "add_frame", { name: "iso", count: 3, durationMs: 120 });
+    assert.ok(!res.isError, textOf(res));
+    res = await call(client, "set_frame_duration", { name: "iso", frame: 1, durationMs: 150 });
+    assert.ok(!res.isError, textOf(res));
+
+    res = await call(client, "draw_line", {
+      name: "iso",
+      x0: 16,
+      y0: 0,
+      x1: 16,
+      y1: 10,
+      color: "#ffffff",
+      layer: "art",
+      frame: 2,
+    });
+    assert.ok(!res.isError, textOf(res));
+
+    res = await call(client, "preview", { name: "iso", scale: 2, frame: 2 });
+    assert.ok(!res.isError, textOf(res));
+
+    res = await call(client, "export_gif", { name: "iso", scale: 2 });
+    assert.ok(!res.isError, textOf(res));
+    const gif = await fs.readFile(path.join(dir, "iso.gif"));
+    assert.equal(gif.subarray(0, 3).toString("ascii"), "GIF");
+
+    res = await call(client, "get_sprite_info", { name: "iso" });
+    const framed = JSON.parse(textOf(res));
+    assert.equal(framed.frames, 4);
+    assert.equal(framed.frameDurations.length, 4);
+    assert.equal(framed.frameDurations[0], 150);
+
+    res = await call(client, "delete_frame", { name: "iso", frame: 4 });
     assert.ok(!res.isError, textOf(res));
 
     res = await call(client, "duplicate_layer", { name: "iso", layer: "art", newName: "art copy" });

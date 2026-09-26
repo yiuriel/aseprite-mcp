@@ -4,6 +4,7 @@ import { requireSpritePath } from "./workspace.ts";
 export interface RenderOptions {
   scale?: number;
   hideGuides?: boolean;
+  frame?: number;
 }
 
 export interface RenderResult {
@@ -27,18 +28,30 @@ export async function renderPng(
   const spritePath = await requireSpritePath(name);
   const scale = options.scale ?? 1;
   const hideGuides = options.hideGuides ?? true;
+  const frame = options.frame ?? 1;
 
   const run = await runLua(
     `
     local s = app.open(MCP_ARGS.spritePath)
     if not s then error("Could not open sprite: " .. MCP_ARGS.spritePath) end
     if MCP_ARGS.hideGuides then mcp.hideGuides(s) end
+    if MCP_ARGS.frame < 1 or MCP_ARGS.frame > #s.frames then error("Frame out of range") end
+    app.activeFrame = s.frames[MCP_ARGS.frame]
     local srcW, srcH = s.width, s.height
     if MCP_ARGS.scale ~= 1 then s:resize(srcW * MCP_ARGS.scale, srcH * MCP_ARGS.scale) end
-    if not s:saveCopyAs(MCP_ARGS.outPath) then error("Failed to export png") end
+    app.command.ExportSpriteSheet{
+      ui = false,
+      type = "horizontal",
+      frameRange = tostring(MCP_ARGS.frame),
+      textureFilename = MCP_ARGS.outPath,
+      targetSprite = s,
+    }
+    local f = io.open(MCP_ARGS.outPath, "r")
+    if not f then error("Failed to export png") end
+    f:close()
     return { width = srcW, height = srcH, outputWidth = s.width, outputHeight = s.height }
     `,
-    { spritePath, outPath, scale, hideGuides },
+    { spritePath, outPath, scale, hideGuides, frame },
   );
 
   if (!run.ok || run.result === null) {

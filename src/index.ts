@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { asepriteBinaryPath } from "./config.ts";
 import { registerCreateSprite } from "./tools/create-sprite.ts";
 import { registerExport } from "./tools/export.ts";
+import { registerFrames } from "./tools/frames.ts";
 import { registerIso } from "./tools/iso.ts";
 import { registerLayers } from "./tools/layers.ts";
 import { registerPalette } from "./tools/palette.ts";
@@ -22,6 +23,7 @@ registerSetPixels(server);
 registerPreview(server);
 registerSpriteInfo(server);
 registerLayers(server);
+registerFrames(server);
 registerPrimitives(server);
 registerIso(server);
 registerPalette(server);

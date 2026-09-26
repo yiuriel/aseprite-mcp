@@ -11,6 +11,7 @@ import { errorText, text } from "./result.ts";
 import { readSpriteInfo } from "./sprite-info.ts";
 
 const layerParam = z.string().optional().describe("Target layer. Defaults to the first non-guide layer.");
+const frameParam = z.number().int().min(1).optional().describe("Target frame (1-based). Defaults to 1.");
 
 export async function createIsoGuide(
   name: string,
@@ -72,9 +73,10 @@ export function registerIso(server: McpServer): void {
         color: colorSchema,
         outlineColor: colorSchema.optional(),
         layer: layerParam,
+        frame: frameParam,
       },
     },
-    async ({ name, x, y, tileWidth, color, outlineColor, layer }) => {
+    async ({ name, x, y, tileWidth, color, outlineColor, layer, frame }) => {
       try {
         const points = isoDiamondPoints(x, y, tileWidth ?? DEFAULT_TILE_WIDTH);
         await drawOnSprite(
@@ -89,6 +91,7 @@ export function registerIso(server: McpServer): void {
             color: parseColor(color),
             outlineColor: outlineColor === undefined ? null : parseColor(outlineColor),
           },
+          frame,
         );
         return text(`Drew iso tile on ${name}.aseprite.`);
       } catch (err) {
@@ -114,9 +117,10 @@ export function registerIso(server: McpServer): void {
         rightColor: colorSchema,
         outlineColor: colorSchema.optional(),
         layer: layerParam,
+        frame: frameParam,
       },
     },
-    async ({ name, x, y, tileWidth, bodyHeight, topColor, leftColor, rightColor, outlineColor, layer }) => {
+    async ({ name, x, y, tileWidth, bodyHeight, topColor, leftColor, rightColor, outlineColor, layer, frame }) => {
       try {
         const faces = isoCubeFaces(x, y, tileWidth ?? DEFAULT_TILE_WIDTH, bodyHeight);
         await drawOnSprite(
@@ -141,6 +145,7 @@ export function registerIso(server: McpServer): void {
             rightColor: parseColor(rightColor),
             outlineColor: outlineColor === undefined ? null : parseColor(outlineColor),
           },
+          frame,
         );
         return text(`Drew iso cube on ${name}.aseprite.`);
       } catch (err) {

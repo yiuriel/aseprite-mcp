@@ -47,10 +47,11 @@ src/
     preview.ts           preview (returns an image)
     sprite-info.ts       get_sprite_info, get_pixels
     layers.ts            create/update/delete/duplicate_layer
+    frames.ts            add_frame, set_frame_duration, delete_frame
     primitives.ts        draw_line/rect/polyline/polygon, fill_rect/polygon, flood_fill
     iso.ts               draw_iso_tile, draw_iso_cube, create_iso_guide
     palette.ts           get_palette, set_palette (explicit colors or ramp)
-    export.ts            export_png
+    export.ts            export_png, export_gif
 ```
 
 Sprites live in `ASEPRITE_MCP_DIR` or `~/aseprite-mcp/sprites`, addressed by short `name`.
@@ -68,6 +69,10 @@ hide them by default. Drawing tools take an optional `layer` (default: first non
 - `image:getPixel(x, y)` returns a **packed int**, not a Color — decode with `app.pixelColor.rgbaR/G/B/A(p)`.
 - Access cels via `sprite.cels[1]` (there is no `sprite:cel(...)`).
 - `sprite:saveAs(path)` returns a boolean.
+- **PNG export of a sprite with >1 frame:** `saveCopyAs(path.png)` silently returns `true` but writes nothing when the sprite has multiple frames (e.g. after `newFrame` + reopen). Use `app.command.ExportSpriteSheet{ ui=false, type="horizontal", frameRange="<n>", textureFilename=path, targetSprite=s }` instead. Animated GIF export via `saveCopyAs(path.gif)` does work.
+- `frame.duration` is in **seconds** (default `0.1`); assign `ms / 1000`. Clamped to 65535 ms.
+- There is no `sprite:gotoFrame`; select a frame with `app.activeFrame = sprite.frames[n]` before rendering.
+- Draw tools target a frame via `mcp.target(sprite, layerName, frame)`.
 - User extensions (e.g. `pixellab`) print startup errors to stderr; `filterStderr` drops them.
 
 ## MCP client config
