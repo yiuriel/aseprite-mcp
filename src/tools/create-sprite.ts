@@ -4,6 +4,7 @@ import { z } from "zod";
 import { colorToLua, parseColor } from "../aseprite/color.ts";
 import { runLua } from "../aseprite/runner.ts";
 import { ensureSpritesDir, resolveSpritePath } from "../aseprite/workspace.ts";
+import { COLOR_DESCRIPTION, colorSchema } from "./color-schema.ts";
 
 const COLOR_MODES = {
   rgb: "ColorMode.RGB",
@@ -12,13 +13,6 @@ const COLOR_MODES = {
 } as const;
 
 type ColorMode = keyof typeof COLOR_MODES;
-
-const colorObjectSchema = z.object({
-  r: z.number().int().min(0).max(255),
-  g: z.number().int().min(0).max(255),
-  b: z.number().int().min(0).max(255),
-  a: z.number().int().min(0).max(255).optional(),
-});
 
 export function registerCreateSprite(server: McpServer): void {
   server.registerTool(
@@ -37,12 +31,9 @@ export function registerCreateSprite(server: McpServer): void {
           .enum(["rgb", "grayscale", "indexed"])
           .optional()
           .describe("Pixel color mode. Defaults to rgb."),
-        background: z
-          .union([z.string(), colorObjectSchema])
+        background: colorSchema
           .optional()
-          .describe(
-            "Optional fill color as #rgb/#rgba/#rrggbb/#rrggbbaa or {r,g,b,a}. Omit for a transparent canvas.",
-          ),
+          .describe(`Optional fill color. ${COLOR_DESCRIPTION} Omit for a transparent canvas.`),
         overwrite: z
           .boolean()
           .optional()
