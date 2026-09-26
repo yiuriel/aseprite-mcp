@@ -1,9 +1,8 @@
-import fs from "node:fs/promises";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { type ColorInput, type Rgba, parseColor } from "../aseprite/color.ts";
 import { runLua } from "../aseprite/runner.ts";
-import { resolveSpritePath } from "../aseprite/workspace.ts";
+import { requireSpritePath } from "../aseprite/workspace.ts";
 import { colorSchema } from "./color-schema.ts";
 
 export interface PixelInput {
@@ -67,15 +66,7 @@ function buildBody(): string {
 }
 
 export async function applyPixels(name: string, pixels: Pixel[]): Promise<SetPixelsSummary> {
-  const outPath = resolveSpritePath(name);
-
-  const exists = await fs
-    .access(outPath)
-    .then(() => true)
-    .catch(() => false);
-  if (!exists) {
-    throw new Error(`Sprite "${name}" not found at ${outPath}. Create it first with create_sprite.`);
-  }
+  const outPath = await requireSpritePath(name);
 
   const run = await runLua(buildBody(), { path: outPath, pixels });
   if (!run.ok) {

@@ -24,6 +24,20 @@ test("buildWrappedScript embeds the args path and body and sentinels", () => {
   assert.ok(script.includes(ERROR_SENTINEL));
 });
 
+test("buildWrappedScript includes the shared mcp helpers", () => {
+  const script = buildWrappedScript("return {}", "/tmp/x/args.json");
+  for (const helper of [
+    "function mcp.fillRect",
+    "function mcp.fillPolygon",
+    "function mcp.drawLine",
+    "function mcp.floodFill",
+    "function mcp.target(",
+    "function mcp.hideGuides",
+  ]) {
+    assert.ok(script.includes(helper), `missing ${helper}`);
+  }
+});
+
 test("filterStderr drops extension noise but keeps real errors", () => {
   const noise = "/Users/me/Aseprite/extensions/pixellab/handle-pose.lua:58: attempt to index a nil value";
   const real = "script.lua:12: intentional failure";

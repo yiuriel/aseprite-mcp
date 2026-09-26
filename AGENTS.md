@@ -31,17 +31,32 @@ src/
   index.ts               MCP server bootstrap + tool registration
   aseprite/
     runner.ts            spawns `aseprite -b --script`; returns structured LuaRunResult
-    lua.ts               pure helpers: luaString, buildWrappedScript, filterStderr, parseLuaOutput
-    color.ts             parseColor (hex / named / hsl / hsv) + colorToLua
+    lua.ts               pure helpers + LUA_HELPERS prelude (mcp.* drawing/layer fns)
+    color.ts             parseColor (hex / named / hsl / hsv) + colorToLua + interpolateRamp
     named-colors.ts      CSS named-color table
     workspace.ts         resolve ASEPRITE_MCP_DIR / ~/aseprite-mcp/sprites, name -> path
+    guides.ts            guide-layer conventions (name `symmetrical guides`, `_` prefix)
+    iso.ts               2:1 iso geometry: isoDiamondPoints, isoCubeFaces, isoGuideDots
+    render.ts            renderPng (open -> hide guides -> optional upscale -> saveCopyAs PNG)
   tools/
     color-schema.ts      shared zod colorSchema for all tools
-    create-sprite.ts     create_sprite tool
-    set-pixels.ts        set_pixels tool (normalizePixels + applyPixels + handler)
+    result.ts            text/errorText/json MCP result helpers
+    drawing.ts           drawOnSprite(): open target layer, run inner Lua, save
+    create-sprite.ts     create_sprite
+    set-pixels.ts        set_pixels
+    preview.ts           preview (returns an image)
+    sprite-info.ts       get_sprite_info, get_pixels
+    layers.ts            create/update/delete/duplicate_layer
+    primitives.ts        draw_line/rect/polyline/polygon, fill_rect/polygon, flood_fill
+    iso.ts               draw_iso_tile, draw_iso_cube, create_iso_guide
+    palette.ts           get_palette, set_palette (explicit colors or ramp)
+    export.ts            export_png
 ```
 
 Sprites live in `ASEPRITE_MCP_DIR` or `~/aseprite-mcp/sprites`, addressed by short `name`.
+
+Guide layers are any layer named `symmetrical guides` or starting with `_`; `preview`/`export_png`
+hide them by default. Drawing tools take an optional `layer` (default: first non-guide layer).
 
 ## Aseprite scripting notes (learned the hard way)
 

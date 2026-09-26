@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { colorToLua, parseColor } from "./color.ts";
+import { colorToLua, interpolateRamp, parseColor, rgbToHsl, rgbToHsv } from "./color.ts";
 
 test("parses short and long hex", () => {
   assert.deepEqual(parseColor("#f00"), { r: 255, g: 0, b: 0, a: 255 });
@@ -59,4 +59,42 @@ test("rejects invalid colors", () => {
 
 test("colorToLua emits an Aseprite Color literal", () => {
   assert.equal(colorToLua({ r: 1, g: 2, b: 3, a: 4 }), "Color{r=1, g=2, b=3, a=4}");
+});
+
+test("rgbToHsl and rgbToHsv convert primaries", () => {
+  assert.deepEqual(rgbToHsl({ r: 255, g: 0, b: 0, a: 255 }), { h: 0, s: 1, l: 0.5 });
+  assert.deepEqual(rgbToHsl({ r: 255, g: 255, b: 255, a: 255 }), { h: 0, s: 0, l: 1 });
+  assert.deepEqual(rgbToHsv({ r: 0, g: 0, b: 255, a: 255 }), { h: 240, s: 1, v: 1 });
+});
+
+test("interpolateRamp generates rgb endpoints and midpoint", () => {
+  const ramp = interpolateRamp(
+    { r: 255, g: 0, b: 0, a: 255 },
+    { r: 0, g: 0, b: 255, a: 255 },
+    3,
+    "rgb",
+  );
+  assert.deepEqual(ramp, [
+    { r: 255, g: 0, b: 0, a: 255 },
+    { r: 128, g: 0, b: 128, a: 255 },
+    { r: 0, g: 0, b: 255, a: 255 },
+  ]);
+});
+
+test("interpolateRamp preserves endpoints in hsl and hsv", () => {
+  const from = { r: 200, g: 40, b: 40, a: 255 };
+  const to = { r: 40, g: 200, b: 90, a: 128 };
+  for (const space of ["hsl", "hsv"] as const) {
+    const ramp = interpolateRamp(from, to, 5, space);
+    assert.equal(ramp.length, 5);
+    assert.deepEqual(ramp[0], from);
+    assert.deepEqual(ramp[4], to);
+  }
+});
+
+test("interpolateRamp rejects too few steps", () => {
+  assert.throws(
+    () => interpolateRamp({ r: 0, g: 0, b: 0, a: 255 }, { r: 255, g: 255, b: 255, a: 255 }, 1),
+    /at least 2/,
+  );
 });

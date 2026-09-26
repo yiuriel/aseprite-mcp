@@ -24,3 +24,17 @@ export async function ensureSpritesDir(): Promise<string> {
   await fs.mkdir(dir, { recursive: true });
   return dir;
 }
+
+export async function requireSpritePath(name: string): Promise<string> {
+  const spritePath = resolveSpritePath(name);
+  const exists = await fs
+    .access(spritePath)
+    .then(() => true)
+    .catch(() => false);
+  if (!exists) {
+    throw new Error(
+      `Sprite "${name}" not found at ${spritePath}. Create it first with create_sprite.`,
+    );
+  }
+  return spritePath;
+}

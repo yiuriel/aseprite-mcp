@@ -155,3 +155,105 @@ export function parseColor(input: ColorInput): Rgba {
 export function colorToLua(color: Rgba): string {
   return `Color{r=${color.r}, g=${color.g}, b=${color.b}, a=${color.a}}`;
 }
+
+export interface Hsl {
+  h: number;
+  s: number;
+  l: number;
+}
+
+export interface Hsv {
+  h: number;
+  s: number;
+  v: number;
+}
+
+export function rgbToHsl(color: Rgba): Hsl {
+  const r = color.r / 255;
+  const g = color.g / 255;
+  const b = color.b / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+
+  if (max === min) return { h: 0, s: 0, l };
+
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h: number;
+  if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+
+  return { h: h * 60, s, l };
+}
+
+export function rgbToHsv(color: Rgba): Hsv {
+  const r = color.r / 255;
+  const g = color.g / 255;
+  const b = color.b / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+
+  let h = 0;
+  if (d !== 0) {
+    if (max === r) h = 60 * (((g - b) / d) % 6);
+    else if (max === g) h = 60 * ((b - r) / d + 2);
+    else h = 60 * ((r - g) / d + 4);
+  }
+  if (h < 0) h += 360;
+
+  return { h, s: max === 0 ? 0 : d / max, v: max };
+}
+
+export type RampSpace = "rgb" | "hsl" | "hsv";
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+function lerpHue(a: number, b: number, t: number): number {
+  let from = a;
+  let to = b;
+  if (to - from > 180) from += 360;
+  else if (from - to > 180) to += 360;
+  return lerp(from, to, t);
+}
+
+export function interpolateRamp(
+  from: Rgba,
+  to: Rgba,
+  steps: number,
+  space: RampSpace = "rgb",
+): Rgba[] {
+  if (!Number.isInteger(steps) || steps < 2) {
+    throw new Error("Ramp steps must be an integer of at least 2.");
+  }
+
+  const result: Rgba[] = [];
+  for (let i = 0; i < steps; i++) {
+    const t = i / (steps - 1);
+    const a = Math.round(lerp(from.a, to.a, t));
+
+    if (space === "hsl") {
+      const h1 = rgbToHsl(from);
+      const h2 = rgbToHsl(to);
+      const { r, g, b } = hslToRgb(lerpHue(h1.h, h2.h, t), lerp(h1.s, h2.s, t), lerp(h1.l, h2.l, t));
+      result.push({ r, g, b, a });
+    } else if (space === "hsv") {
+      const h1 = rgbToHsv(from);
+      const h2 = rgbToHsv(to);
+      const { r, g, b } = hsvToRgb(lerpHue(h1.h, h2.h, t), lerp(h1.s, h2.s, t), lerp(h1.v, h2.v, t));
+      result.push({ r, g, b, a });
+    } else {
+      result.push({
+        r: Math.round(lerp(from.r, to.r, t)),
+        g: Math.round(lerp(from.g, to.g, t)),
+        b: Math.round(lerp(from.b, to.b, t)),
+        a,
+      });
+    }
+  }
+  return result;
+}
