@@ -8,24 +8,6 @@ const server = new McpServer({
   version: "0.1.0",
 });
 
-server.registerTool(
-  "ping",
-  {
-    title: "Ping",
-    description:
-      "Health check. Confirms the server is running and reports the resolved Aseprite binary path.",
-    inputSchema: {},
-  },
-  async () => ({
-    content: [
-      {
-        type: "text",
-        text: `aseprite-mcp alive\naseprite=${asepriteBinaryPath}`,
-      },
-    ],
-  }),
-);
-
 const transport = new StdioServerTransport();
 await server.connect(transport);
 console.error(`aseprite-mcp: connected (aseprite=${asepriteBinaryPath})`);
