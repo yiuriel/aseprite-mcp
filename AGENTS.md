@@ -38,6 +38,7 @@ src/
   tools/
     color-schema.ts      shared zod colorSchema for all tools
     create-sprite.ts     create_sprite tool
+    set-pixels.ts        set_pixels tool (normalizePixels + applyPixels + handler)
 ```
 
 Sprites live in `ASEPRITE_MCP_DIR` or `~/aseprite-mcp/sprites`, addressed by short `name`.
