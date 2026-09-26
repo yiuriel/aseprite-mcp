@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { asepriteBinaryPath } from "../config.ts";
+import { buildWrappedScript, filterStderr, parseLuaOutput } from "./lua.ts";
 
 export interface LuaRunResult {
   ok: boolean;
@@ -20,8 +21,6 @@ export interface RunLuaOptions {
   keepTemp?: boolean;
 }
 
-const RESULT_SENTINEL = "__ASEPRITE_MCP_RESULT__";
-const ERROR_SENTINEL = "__ASEPRITE_MCP_ERROR__";
 const DEFAULT_TIMEOUT_MS = 20_000;
 
 export class AsepriteError extends Error {
@@ -34,49 +33,37 @@ export class AsepriteError extends Error {
   }
 }
 
-function luaString(value: string): string {
-  return (
-    '"' +
-    value
-      .replace(/\\/g, "\\\\")
-      .replace(/"/g, '\\"')
-      .replace(/\n/g, "\\n")
-      .replace(/\r/g, "\\r") +
-    '"'
-  );
+interface SpawnOutcome {
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+  timedOut: boolean;
 }
 
-function buildWrappedScript(body: string, argsPath: string): string {
-  return `local function __mcp_read(p)
-  local f = io.open(p, "r")
-  if not f then return nil end
-  local s = f:read("a")
-  f:close()
-  return s
-end
+function execute(scriptPath: string, timeoutMs: number, cwd?: string): Promise<SpawnOutcome> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(asepriteBinaryPath, ["-b", "--script", scriptPath], { cwd });
 
-local MCP_ARGS = json.decode(__mcp_read(${luaString(argsPath)}) or "{}") or {}
+    let stdout = "";
+    let stderr = "";
+    let timedOut = false;
 
-local function __mcp_main()
-${body}
-end
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGKILL");
+    }, timeoutMs);
 
-local __mcp_ok, __mcp_ret = pcall(__mcp_main)
-if __mcp_ok then
-  if type(__mcp_ret) ~= "table" then __mcp_ret = { value = __mcp_ret } end
-  print("${RESULT_SENTINEL}" .. json.encode(__mcp_ret))
-else
-  print("${ERROR_SENTINEL}" .. tostring(__mcp_ret))
-end
-`;
-}
-
-function filterStderr(stderr: string): string {
-  return stderr
-    .split(/\r?\n/)
-    .filter((line) => !/Aseprite\/extensions\/.*\.lua:\d+:/.test(line))
-    .join("\n")
-    .trim();
+    child.stdout.on("data", (chunk) => (stdout += chunk));
+    child.stderr.on("data", (chunk) => (stderr += chunk));
+    child.on("error", (err) => {
+      clearTimeout(timer);
+      reject(new AsepriteError(`Failed to launch Aseprite: ${err.message}`));
+    });
+    child.on("close", (exitCode) => {
+      clearTimeout(timer);
+      resolve({ stdout, stderr, exitCode, timedOut });
+    });
+  });
 }
 
 export async function runLua(
@@ -94,42 +81,9 @@ export async function runLua(
     await fs.writeFile(argsPath, JSON.stringify(args));
     await fs.writeFile(scriptPath, buildWrappedScript(body, argsPath));
 
-    const run = await new Promise<{
-      stdout: string;
-      stderr: string;
-      exitCode: number | null;
-      timedOut: boolean;
-    }>((resolve, reject) => {
-      const child = spawn(asepriteBinaryPath, ["-b", "--script", scriptPath], {
-        cwd: options.cwd,
-      });
-
-      let stdout = "";
-      let stderr = "";
-      let timedOut = false;
-
-      const timer = setTimeout(() => {
-        timedOut = true;
-        child.kill("SIGKILL");
-      }, timeoutMs);
-
-      child.stdout.on("data", (chunk) => (stdout += chunk));
-      child.stderr.on("data", (chunk) => (stderr += chunk));
-      child.on("error", (err) => {
-        clearTimeout(timer);
-        reject(new AsepriteError(`Failed to launch Aseprite: ${err.message}`));
-      });
-      child.on("close", (exitCode) => {
-        clearTimeout(timer);
-        resolve({ stdout, stderr, exitCode, timedOut });
-      });
-    });
-
+    const run = await execute(scriptPath, timeoutMs, options.cwd);
     const durationMs = Date.now() - startedAt;
     const stderr = filterStderr(run.stderr);
-    const lines = run.stdout.split(/\r?\n/);
-    const resultLine = lines.find((line) => line.startsWith(RESULT_SENTINEL));
-    const errorLine = lines.find((line) => line.startsWith(ERROR_SENTINEL));
 
     if (run.timedOut) {
       return {
@@ -143,11 +97,13 @@ export async function runLua(
       };
     }
 
-    if (errorLine) {
+    const parsed = parseLuaOutput(run.stdout);
+
+    if (parsed.kind === "error") {
       return {
         ok: false,
         result: null,
-        error: errorLine.slice(ERROR_SENTINEL.length),
+        error: parsed.error,
         stdout: run.stdout,
         stderr,
         exitCode: run.exitCode,
@@ -155,15 +111,12 @@ export async function runLua(
       };
     }
 
-    if (resultLine) {
-      let parsed: unknown = null;
-      try {
-        parsed = JSON.parse(resultLine.slice(RESULT_SENTINEL.length));
-      } catch (err) {
+    if (parsed.kind === "result") {
+      if (parsed.parseError) {
         return {
           ok: false,
           result: null,
-          error: `Failed to parse Lua result: ${(err as Error).message}`,
+          error: `Failed to parse Lua result: ${parsed.parseError}`,
           stdout: run.stdout,
           stderr,
           exitCode: run.exitCode,
@@ -172,7 +125,7 @@ export async function runLua(
       }
       return {
         ok: true,
-        result: parsed,
+        result: parsed.value,
         stdout: run.stdout,
         stderr,
         exitCode: run.exitCode,

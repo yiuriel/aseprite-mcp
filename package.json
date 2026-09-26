@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node src/index.ts",
     "dev": "node --watch src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test",
+    "test:watch": "node --test --watch",
+    "test:integration": "ASEPRITE_MCP_INTEGRATION=1 node --test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.1",
